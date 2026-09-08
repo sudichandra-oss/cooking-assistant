@@ -2,7 +2,7 @@ import { Search, Clock3, Users, SlidersHorizontal, ChefHat, ArrowRight } from 'l
 import { MealPlanner } from '@/components/meal-planner'
 import { createClient, type Recipe } from '@/lib/supabase/server'
 
-async function getRecipes() {
+async function getRecipes(): Promise<{ recipes: Recipe[]; error: string | null }> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('recipes')
@@ -10,12 +10,15 @@ async function getRecipes() {
     .order('created_at', { ascending: false })
     .limit(12)
 
-  if (error) return []
-  return (data ?? []) as Recipe[]
+  if (error) {
+    console.error('[v0] Recipe query failed:', error.message)
+    return { recipes: [], error: error.message }
+  }
+  return { recipes: (data ?? []) as Recipe[], error: null }
 }
 
 export default async function Page() {
-  const recipes = await getRecipes()
+  const { recipes, error: recipeError } = await getRecipes()
   const categories = [...new Set(recipes.map((recipe) => recipe.category).filter(Boolean))]
 
   return (
@@ -54,7 +57,7 @@ export default async function Page() {
             <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b25537]">From the kitchen</p><h2 className="mt-3 font-serif text-4xl tracking-tight">Latest recipes</h2></div>
             <button className="flex items-center gap-2 self-start rounded-full border border-[#ded9cf] px-4 py-2.5 text-sm font-semibold hover:border-[#b25537] hover:text-[#b25537]"><SlidersHorizontal className="size-4" /> Filter</button>
           </div>
-          {recipes.length === 0 ? <div className="mt-10 rounded-2xl border border-dashed border-[#cfc8bc] bg-[#f8f6f1] px-6 py-16 text-center"><h3 className="font-serif text-2xl">Your recipe collection is ready for its first dish.</h3><p className="mx-auto mt-3 max-w-md text-[#6e6a61]">Add recipes in Supabase and they will appear here automatically. Nothing is being served from placeholder data.</p></div> : <div className="mt-10 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">{recipes.map((recipe) => <article key={recipe.id} className="group overflow-hidden rounded-2xl border border-[#e5e0d7] bg-[#f8f6f1]"><div className="aspect-[4/3] overflow-hidden bg-[#ded9cf]">{recipe.image_url ? <img src={recipe.image_url} alt={recipe.title} className="size-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex size-full items-center justify-center text-[#9a958b]"><ChefHat className="size-10" /></div>}</div><div className="p-5"><div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-[#b25537]"><span>{recipe.category ?? 'Recipe'}</span><span>{recipe.difficulty ?? ''}</span></div><h3 className="mt-3 font-serif text-2xl leading-tight">{recipe.title}</h3>{recipe.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6e6a61]">{recipe.description}</p>}<div className="mt-5 flex items-center gap-4 border-t border-[#ded9cf] pt-4 text-xs text-[#6e6a61]">{recipe.prep_time != null && <span className="flex items-center gap-1.5"><Clock3 className="size-4" /> {recipe.prep_time} min</span>}{recipe.servings != null && <span className="flex items-center gap-1.5"><Users className="size-4" /> {recipe.servings}</span>}</div></div></article>)}</div>}
+          {recipes.length === 0 ? <div className="mt-10 rounded-2xl border border-dashed border-[#cfc8bc] bg-[#f8f6f1] px-6 py-16 text-center"><h3 className="font-serif text-2xl">No recipes could be loaded.</h3><p className="mx-auto mt-3 max-w-md text-[#6e6a61]">{recipeError ? 'Supabase returned an error while loading the recipes table.' : 'The recipes table is connected but has no rows yet.'}</p>{recipeError && <p className="mx-auto mt-4 max-w-xl rounded-lg bg-[#f7eee9] px-4 py-3 text-left font-mono text-xs text-[#8d432d]">{recipeError}</p>}</div> : <div className="mt-10 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">{recipes.map((recipe) => <article key={recipe.id} className="group overflow-hidden rounded-2xl border border-[#e5e0d7] bg-[#f8f6f1]"><div className="aspect-[4/3] overflow-hidden bg-[#ded9cf]">{recipe.image_url ? <img src={recipe.image_url} alt={recipe.title} className="size-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex size-full items-center justify-center text-[#9a958b]"><ChefHat className="size-10" /></div>}</div><div className="p-5"><div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-[#b25537]"><span>{recipe.category ?? 'Recipe'}</span><span>{recipe.difficulty ?? ''}</span></div><h3 className="mt-3 font-serif text-2xl leading-tight">{recipe.title}</h3>{recipe.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6e6a61]">{recipe.description}</p>}<div className="mt-5 flex items-center gap-4 border-t border-[#ded9cf] pt-4 text-xs text-[#6e6a61]">{recipe.prep_time != null && <span className="flex items-center gap-1.5"><Clock3 className="size-4" /> {recipe.prep_time} min</span>}{recipe.servings != null && <span className="flex items-center gap-1.5"><Users className="size-4" /> {recipe.servings}</span>}</div></div></article>)}</div>}
         </div>
       </section>
 
